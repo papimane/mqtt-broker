@@ -23,7 +23,16 @@ try {
     docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "ts601/decoded/#" -C 1 -v
   }
 
-  Start-Sleep -Milliseconds 300
+  # Wait subscriber registration visible in broker logs (avoid race)
+  $subReady = $false
+  for ($i = 0; $i -lt 20; $i++) {
+    $mlogs = docker compose logs --no-color --tail 200 mosquitto 2>$null
+    if ($mlogs -match "ts601/decoded/#") { $subReady = $true; break }
+    Start-Sleep -Milliseconds 250
+  }
+  if (-not $subReady) {
+    throw "Smoke KO: subscriber pas prêt (pas de SUBSCRIBE ts601/decoded/# vu côté broker)"
+  }
 
   docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101" | Out-Null
 
