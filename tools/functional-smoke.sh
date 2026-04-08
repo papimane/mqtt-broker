@@ -11,12 +11,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Subscribe in background (one message)
-docker run --rm --network mqtt-broker_default efrecon/mqtt-client sub -h mosquitto -t "ts601/decoded/#" -C 1 -v > /tmp/decoded.out &
+# Subscribe (1 message) with hard timeout (avoid hanging CI)
+rm -f /tmp/decoded.out
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
+  sh -lc "timeout 20 mosquitto_sub -h mosquitto -t 'ts601/decoded/#' -C 1 -v" > /tmp/decoded.out &
 sub_pid=$!
 
 # Publish a minimal uplink: "0101" -> battery:1 via codec
-docker run --rm --network mqtt-broker_default efrecon/mqtt-client pub -h mosquitto -t "ts601/uplink/test" -m "0101"
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
+  mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101"
 
 set +e
 for i in {1..20}; do
@@ -28,6 +31,15 @@ done
 set -e
 
 wait "$sub_pid" || true
+
+if [ ! -s /tmp/decoded.out ]; then
+  echo "Smoke KO: aucun message reçu sur ts601/decoded/#"
+  echo "--- ts601-codec logs ---"
+  docker compose logs --no-color --tail 200 ts601-codec || true
+  echo "--- mosquitto logs ---"
+  docker compose logs --no-color --tail 200 mosquitto || true
+  exit 1
+fi
 
 grep -q '"decoded"' /tmp/decoded.out
 grep -q '"battery":1' /tmp/decoded.out
