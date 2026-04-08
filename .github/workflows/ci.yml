@@ -13,10 +13,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: services/ts601-codec/package-lock.json
       - name: Unit tests (ts601-codec)
         working-directory: services/ts601-codec
         run: |
-          npm ci || npm install
+          npm ci
           npm test
 
   functional-smoke:

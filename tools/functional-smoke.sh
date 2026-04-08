@@ -3,7 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-docker compose up -d --build
+docker compose build ts601-codec
+docker compose up -d mosquitto ts601-codec
 
 cleanup() {
   docker compose down -v --remove-orphans || true

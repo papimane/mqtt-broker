@@ -2,7 +2,8 @@ $ErrorActionPreference = "Stop"
 
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
-docker compose up -d --build | Out-Null
+docker compose build ts601-codec | Out-Null
+docker compose up -d mosquitto ts601-codec | Out-Null
 
 try {
   # Start subscriber (1 message) in background

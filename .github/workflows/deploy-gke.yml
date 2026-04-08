@@ -24,10 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node (cache npm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: services/ts601-codec/package-lock.json
+
       - name: Unit tests (ts601-codec)
         run: |
           cd services/ts601-codec
-          npm ci || npm install
+          npm ci
           npm test
 
       - name: Functional smoke (docker compose)
