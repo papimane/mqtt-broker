@@ -11,6 +11,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Wait for codec to be connected/subscribed (avoid race)
+set +e
+ready=0
+for i in {1..40}; do
+  docker compose logs --no-color --tail 50 ts601-codec | grep -q "Connecté. Subscriptions actives" && ready=1 && break
+  sleep 0.5
+done
+set -e
+if [ "$ready" -ne 1 ]; then
+  echo "Smoke KO: ts601-codec pas prêt (pas de log de connexion)"
+  docker compose logs --no-color --tail 200 ts601-codec || true
+  exit 1
+fi
+
 # Subscribe (1 message) with hard timeout (avoid hanging CI)
 rm -f /tmp/decoded.out
 docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
