@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ts601-codec
+  namespace: mqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ts601-codec
+  template:
+    metadata:
+      labels:
+        app: ts601-codec
+    spec:
+      containers:
+        - name: ts601-codec
+          image: ts601-codec:latest
+          env:
+            - name: MQTT_URL
+              value: mqtt://mosquitto:1883
+            - name: UPLINK_SUBSCRIBE
+              value: ts601/uplink/#
+            - name: DECODED_PUBLISH_PREFIX
+              value: ts601/decoded/
+            - name: CMD_SUBSCRIBE
+              value: ts601/cmd/#
+            - name: DOWNLINK_PUBLISH_PREFIX
+              value: ts601/downlink/
+            - name: CODEC_INPUT_FORMAT
+              value: hex
+            - name: CODEC_OUTPUT_BYTES_FORMAT
+              value: hex
+

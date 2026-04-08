@@ -1,0 +1,74 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: europe-west1
+  AR_REPO: mqtt-broker
+  IMAGE_NAME: ts601-codec
+  GKE_CLUSTER: mqtt-broker
+  GKE_LOCATION: europe-west1
+  K8S_NAMESPACE: mqtt
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unit tests (ts601-codec)
+        run: |
+          cd services/ts601-codec
+          npm ci || npm install
+          npm test
+
+      - name: Functional smoke (docker compose)
+        run: |
+          chmod +x tools/functional-smoke.sh
+          ./tools/functional-smoke.sh
+
+      - name: Auth to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build & push ts601-codec image
+        working-directory: services/ts601-codec
+        run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f deploy/gke/namespace.yaml
+          kubectl apply -f deploy/gke/mosquitto.configmap.yaml
+          kubectl apply -f deploy/gke/mosquitto.deployment.yaml
+          kubectl apply -f deploy/gke/mosquitto.service.yaml
+          kubectl apply -f deploy/gke/ts601-codec.deployment.yaml
+          kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/ts601-codec ts601-codec="${IMAGE_URI}"
+          kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deployment/ts601-codec --timeout=180s
+
