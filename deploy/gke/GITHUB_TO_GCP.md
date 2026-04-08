@@ -8,7 +8,7 @@ Ce projet déploie :
 
 - Un projet GCP
 - Un cluster GKE (ex: `mqtt-broker`)
-- Artifact Registry (Docker) dans la région (ex: `europe-west1`) avec un repo (ex: `mqtt-broker`)
+- Artifact Registry (Docker) dans la région (ex: `us-central1`) avec un repo (ex: `mqtt-broker`)
 
 ### 2) Auth GitHub → GCP (recommandé : Workload Identity Federation)
 

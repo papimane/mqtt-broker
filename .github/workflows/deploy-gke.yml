@@ -10,11 +10,11 @@ permissions:
   id-token: write
 
 env:
-  REGION: europe-west1
+  REGION: us-central1
   AR_REPO: mqtt-broker
   IMAGE_NAME: ts601-codec
   GKE_CLUSTER: mqtt-broker
-  GKE_LOCATION: europe-west1
+  GKE_LOCATION: us-central1
   K8S_NAMESPACE: mqtt
 
 jobs:
