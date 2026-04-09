@@ -73,6 +73,16 @@ jobs:
       - name: Configure Docker auth for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev --quiet
 
+      - name: Verify Artifact Registry repository exists
+        env:
+          REGION: ${{ secrets.GCP_ARTIFACT_REGION }}
+          REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          gcloud config set project "${PROJECT_ID}"
+          gcloud artifacts repositories describe "${REPO}" --location "${REGION}" --format="value(format)"
+
       - name: Build and push image
         env:
           IMAGE: ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
