@@ -51,6 +51,24 @@ jobs:
           test -n "${GCP_PROJECT_ID}"
           test -n "${GCP_ARTIFACT_REGION}"
           test -n "${GCP_ARTIFACT_REPO}"
+          # Région attendue: ex "us-central1" (SANS ".pkg.dev" ni "-docker.pkg.dev")
+          if echo "${GCP_ARTIFACT_REGION}" | grep -qE '\.'; then
+            echo "GCP_ARTIFACT_REGION doit être une région (ex: us-central1), pas un hostname."
+            exit 1
+          fi
+          if ! echo "${GCP_ARTIFACT_REGION}" | grep -qE '^[a-z0-9-]+$'; then
+            echo "GCP_ARTIFACT_REGION invalide (format attendu: [a-z0-9-]+)."
+            exit 1
+          fi
+          # Repo attendu: ID du repository Artifact Registry (ex: mqtt-broker)
+          if echo "${GCP_ARTIFACT_REPO}" | grep -qE '[/.]'; then
+            echo "GCP_ARTIFACT_REPO doit être l'ID du repo (ex: mqtt-broker), sans '/' ni '.'."
+            exit 1
+          fi
+          if ! echo "${GCP_ARTIFACT_REPO}" | grep -qE '^[a-z0-9-]+$'; then
+            echo "GCP_ARTIFACT_REPO invalide (format attendu: [a-z0-9-]+)."
+            exit 1
+          fi
 
       - name: Configure Docker auth for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev --quiet
