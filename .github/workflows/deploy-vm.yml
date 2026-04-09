@@ -41,6 +41,17 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Validate required secrets (fail fast)
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_ARTIFACT_REGION: ${{ secrets.GCP_ARTIFACT_REGION }}
+          GCP_ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+        run: |
+          set -euo pipefail
+          test -n "${GCP_PROJECT_ID}"
+          test -n "${GCP_ARTIFACT_REGION}"
+          test -n "${GCP_ARTIFACT_REPO}"
+
       - name: Configure Docker auth for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev --quiet
 
@@ -134,6 +145,6 @@ jobs:
             EOF
 
             cd "$DEPLOY_DIR"
-            echo "${AR_TOKEN}" | sudo docker login -u oauth2accesstoken --password-stdin "https://${AR_HOST}"
+            echo "${AR_TOKEN}" | sudo docker login -u oauth2accesstoken --password-stdin "${AR_HOST}"
             sudo docker compose -f docker-compose.prod.yml --env-file .env pull ts601-codec
             sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
