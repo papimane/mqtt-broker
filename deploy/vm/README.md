@@ -12,7 +12,7 @@ Le workflow **Deploy to GCP VM** (`.github/workflows/deploy-vm.yml`) :
 | Secret | Description |
 |--------|-------------|
 | `GCP_WIF_PROVIDER` | Resource name du provider WIF (`projects/.../locations/global/workloadIdentityPools/.../providers/...`) |
-| `GCP_SERVICE_ACCOUNT` | Email du compte de service impersonné (ex. `deploy@projet.iam.gserviceaccount.com`) |
+| `GCP_SERVICE_ACCOUNT_EMAIL` | Email du compte de service impersonné (ex. `deploy@projet.iam.gserviceaccount.com`) |
 | `GCP_PROJECT_ID` | ID du projet GCP |
 | `GCP_ARTIFACT_REGION` | Région Artifact Registry (ex. `us-central1`) |
 | `GCP_ARTIFACT_REPO` | ID du dépôt Docker dans Artifact Registry (ex. `mqtt-broker`) |
