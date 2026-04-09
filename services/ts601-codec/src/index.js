@@ -9,11 +9,11 @@ const MQTT_URL = process.env.MQTT_URL || "mqtt://localhost:1883";
 const MQTT_USERNAME = process.env.MQTT_USERNAME || undefined;
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD || undefined;
 
-const UPLINK_SUBSCRIBE = process.env.UPLINK_SUBSCRIBE || "ts601/uplink/#";
-const DECODED_PUBLISH_PREFIX = process.env.DECODED_PUBLISH_PREFIX || "ts601/decoded/";
+const UPLINK_SUBSCRIBE = process.env.UPLINK_SUBSCRIBE || "ts/+/uplink";
+const DECODED_PUBLISH_PREFIX = process.env.DECODED_PUBLISH_PREFIX || "decoded/";
 
-const CMD_SUBSCRIBE = process.env.CMD_SUBSCRIBE || "ts601/cmd/#";
-const DOWNLINK_PUBLISH_PREFIX = process.env.DOWNLINK_PUBLISH_PREFIX || "ts601/downlink/";
+const CMD_SUBSCRIBE = process.env.CMD_SUBSCRIBE || "ts/+/downlink";
+const DOWNLINK_PUBLISH_PREFIX = process.env.DOWNLINK_PUBLISH_PREFIX || "encoded/";
 
 const CODEC_INPUT_FORMAT = (process.env.CODEC_INPUT_FORMAT || "hex").toLowerCase();
 const CODEC_OUTPUT_BYTES_FORMAT = (process.env.CODEC_OUTPUT_BYTES_FORMAT || "hex").toLowerCase();

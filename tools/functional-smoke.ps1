@@ -10,7 +10,8 @@ try {
   $ready = $false
   for ($i = 0; $i -lt 40; $i++) {
     $logs = docker compose logs --no-color --tail 50 ts601-codec 2>$null
-    if ($logs -match "Connecté\. Subscriptions actives") { $ready = $true; break }
+    # Évite les soucis d'encodage/accents dans la sortie logs
+    if ($logs -match "Subscriptions actives") { $ready = $true; break }
     Start-Sleep -Milliseconds 500
   }
   if (-not $ready) {
@@ -20,28 +21,32 @@ try {
 
   # Start subscriber (1 message) in background
   $subJob = Start-Job -ScriptBlock {
-    docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "ts601/decoded/#" -C 1 -v
+    docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "decoded/ts/+/uplink" -C 1 -v
   }
 
-  # Wait subscriber registration visible in broker logs (avoid race)
+  # Attendre que l'abonnement soit visible côté broker (évite la course)
   $subReady = $false
-  for ($i = 0; $i -lt 20; $i++) {
-    $mlogs = docker compose logs --no-color --tail 200 mosquitto 2>$null
-    if ($mlogs -match "ts601/decoded/#") { $subReady = $true; break }
+  for ($i = 0; $i -lt 40; $i++) {
+    $mlogs = docker compose logs --no-color --tail 300 mosquitto 2>$null
+    # Utilise -like pour éviter les soucis d'encodage/regex
+    if ($mlogs -like "*decoded/ts/+/uplink*") { $subReady = $true; break }
     Start-Sleep -Milliseconds 250
   }
   if (-not $subReady) {
-    throw "Smoke KO: subscriber pas prêt (pas de SUBSCRIBE ts601/decoded/# vu côté broker)"
+    docker compose logs --no-color --tail 300 mosquitto | Out-Host
+    throw "Smoke KO: subscriber pas prêt (pas de SUBSCRIBE decoded/ts/+/uplink vu côté broker)"
   }
 
-  docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101" | Out-Null
+  docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts/ABC123/uplink" -m "0101" | Out-Null
 
   # Hard timeout to avoid hanging
   $out = Wait-Job -Job $subJob -Timeout 20 | Out-Null
   if (-not $out) {
     Stop-Job $subJob -ErrorAction SilentlyContinue | Out-Null
     Remove-Job $subJob -Force -ErrorAction SilentlyContinue | Out-Null
-    throw "Smoke KO: timeout (aucun message reçu sur ts601/decoded/#)"
+    docker compose logs --no-color --tail 200 ts601-codec | Out-Host
+    docker compose logs --no-color --tail 200 mosquitto | Out-Host
+    throw "Smoke KO: timeout (aucun message reçu sur decoded/ts/+/uplink)"
   }
   $out = Receive-Job -Job $subJob -AutoRemoveJob -ErrorAction Stop
 

@@ -28,26 +28,26 @@ fi
 # Subscribe (1 message) with hard timeout (avoid hanging CI)
 rm -f /tmp/decoded.out
 docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
-  sh -lc "timeout 20 mosquitto_sub -h mosquitto -t 'ts601/decoded/#' -C 1 -v" > /tmp/decoded.out &
+  sh -lc "timeout 20 mosquitto_sub -h mosquitto -t 'decoded/ts/+/uplink' -C 1 -v" > /tmp/decoded.out &
 sub_pid=$!
 
 # Wait until subscription is registered on the broker (avoid race)
 set +e
 sub_ready=0
 for i in {1..20}; do
-  docker compose logs --no-color --tail 200 mosquitto | grep -q "ts601/decoded/#" && sub_ready=1 && break
+  docker compose logs --no-color --tail 200 mosquitto | grep -q "decoded/ts/+/uplink" && sub_ready=1 && break
   sleep 0.25
 done
 set -e
 if [ "$sub_ready" -ne 1 ]; then
-  echo "Smoke KO: subscriber pas prêt (pas de SUBSCRIBE ts601/decoded/# vu côté broker)"
+  echo "Smoke KO: subscriber pas prêt (pas de SUBSCRIBE decoded/ts/+/uplink vu côté broker)"
   docker compose logs --no-color --tail 200 mosquitto || true
   exit 1
 fi
 
 # Publish a minimal uplink: "0101" -> battery:1 via codec
 docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
-  mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101"
+  mosquitto_pub -h mosquitto -t "ts/ABC123/uplink" -m "0101"
 
 set +e
 for i in {1..20}; do
@@ -61,7 +61,7 @@ set -e
 wait "$sub_pid" || true
 
 if [ ! -s /tmp/decoded.out ]; then
-  echo "Smoke KO: aucun message reçu sur ts601/decoded/#"
+  echo "Smoke KO: aucun message reçu sur decoded/ts/+/uplink"
   echo "--- ts601-codec logs ---"
   docker compose logs --no-color --tail 200 ts601-codec || true
   echo "--- mosquitto logs ---"

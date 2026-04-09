@@ -9,10 +9,14 @@ test("mqttTopicMatchesPrefix: exact", () => {
 });
 
 test("mqttTopicMatchesPrefix: hash wildcard", () => {
-  assert.equal(mqttTopicMatchesPrefix("ts601/uplink", "ts601/uplink/#"), true);
-  assert.equal(mqttTopicMatchesPrefix("ts601/uplink/x", "ts601/uplink/#"), true);
-  assert.equal(mqttTopicMatchesPrefix("ts601/uplink/x/y", "ts601/uplink/#"), true);
-  assert.equal(mqttTopicMatchesPrefix("ts601/uplink2/x", "ts601/uplink/#"), false);
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink", "ts/+/uplink"), true);
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink/x", "ts/+/uplink"), false);
+  // NB: l'implémentation supporte seulement les patterns qui FINISSENT par "/#"
+  // (pas des patterns mixtes "ts/+/uplink/#").
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink", "ts/#"), true);
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink/x", "ts/#"), true);
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink/x/y", "ts/#"), true);
+  assert.equal(mqttTopicMatchesPrefix("ts/ABC123/uplink2/x", "ts/+/uplink"), false);
 });
 
 test("mqttTopicMatchesPrefix: plus wildcard", () => {

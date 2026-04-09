@@ -172,10 +172,10 @@ jobs:
                   MQTT_URL: mqtt://mosquitto:1883
                   MQTT_USERNAME: "${MQTT_USERNAME}"
                   MQTT_PASSWORD: "${MQTT_PASSWORD}"
-                  UPLINK_SUBSCRIBE: ts601/uplink/#
-                  DECODED_PUBLISH_PREFIX: ts601/decoded/
-                  CMD_SUBSCRIBE: ts601/cmd/#
-                  DOWNLINK_PUBLISH_PREFIX: ts601/downlink/
+                  UPLINK_SUBSCRIBE: ts/+/uplink
+                  DECODED_PUBLISH_PREFIX: decoded/
+                  CMD_SUBSCRIBE: ts/+/downlink
+                  DOWNLINK_PUBLISH_PREFIX: encoded/
                   CODEC_INPUT_FORMAT: hex
                   CODEC_OUTPUT_BYTES_FORMAT: hex
                 depends_on:

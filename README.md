@@ -27,23 +27,23 @@ UI d’administration (MQTTX Web) :
 ## Topics (par défaut)
 
 - **Uplink brut → décodé**
-  - Entrée (abonnement codec) : `ts601/uplink/#`
-  - Sortie (publication codec) : `ts601/decoded/<topic_original>`
+  - Entrée (abonnement codec) : `ts/+/uplink` (où `+` = `SN`)
+  - Sortie (publication codec) : `decoded/<topic_original>` (ex: `decoded/ts/[SN]/uplink`)
 
 - **Commande JSON → downlink encodé**
-  - Entrée (abonnement codec) : `ts601/cmd/#`
-  - Sortie (publication codec) : `ts601/downlink/<topic_original>`
+  - Entrée (abonnement codec) : `ts/+/downlink` (où `+` = `SN`)
+  - Sortie (publication codec) : `encoded/<topic_original>` (ex: `encoded/ts/[SN]/downlink`)
 
 ## Formats de payload supportés
 
-Pour les uplinks (`ts601/uplink/#`), le service accepte :
+Pour les uplinks (`ts/[SN]/uplink`), le service accepte :
 - **hex** (par défaut) : payload MQTT = chaîne hex (ex: `010364...`)
 - **base64** : payload MQTT = base64
 - **json_bytes** : payload MQTT = JSON `{"bytes":[1,2,3]}`
 
 Configure via `CODEC_INPUT_FORMAT`.
 
-Pour les commandes (`ts601/cmd/#`), la payload MQTT est **JSON** (objet) conforme aux champs attendus par l’encodeur Milesight TS601.
+Pour les commandes (`ts/[SN]/downlink`), la payload MQTT est **JSON** (objet) conforme aux champs attendus par l’encodeur Milesight TS601.
 
 ## Variables d’environnement (codec)
 
@@ -51,10 +51,10 @@ Voir `docker-compose.yml` pour les valeurs par défaut.
 
 - `MQTT_URL` (ex: `mqtt://mosquitto:1883`)
 - `MQTT_USERNAME`, `MQTT_PASSWORD` (optionnels)
-- `UPLINK_SUBSCRIBE` (ex: `ts601/uplink/#`)
-- `DECODED_PUBLISH_PREFIX` (ex: `ts601/decoded/`)
-- `CMD_SUBSCRIBE` (ex: `ts601/cmd/#`)
-- `DOWNLINK_PUBLISH_PREFIX` (ex: `ts601/downlink/`)
+- `UPLINK_SUBSCRIBE` (ex: `ts/+/uplink`)
+- `DECODED_PUBLISH_PREFIX` (ex: `decoded/`)
+- `CMD_SUBSCRIBE` (ex: `ts/+/downlink`)
+- `DOWNLINK_PUBLISH_PREFIX` (ex: `encoded/`)
 - `CODEC_INPUT_FORMAT` = `hex|base64|json_bytes`
 - `CODEC_OUTPUT_BYTES_FORMAT` = `hex|base64|json_bytes` (format des bytes encodés en sortie)
 

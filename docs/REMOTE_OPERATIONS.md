@@ -14,10 +14,10 @@ Référence locale : `docker-compose.yml`. En production, le workflow génère `
 
 - **`MQTT_URL`**: URL du broker MQTT (ex: `mqtt://mosquitto:1883`)
 - **`MQTT_USERNAME` / `MQTT_PASSWORD`**: identifiants MQTT (optionnels ; peuvent être fournis via secrets GitHub `MQTT_USERNAME` / `MQTT_PASSWORD`)
-- **`UPLINK_SUBSCRIBE`**: topic(s) d’entrée uplink (ex: `ts601/uplink/#`)
-- **`DECODED_PUBLISH_PREFIX`**: préfixe de publication du JSON décodé (ex: `ts601/decoded/`)
-- **`CMD_SUBSCRIBE`**: topic(s) d’entrée commandes JSON (ex: `ts601/cmd/#`)
-- **`DOWNLINK_PUBLISH_PREFIX`**: préfixe de publication des downlinks encodés (ex: `ts601/downlink/`)
+- **`UPLINK_SUBSCRIBE`**: topic(s) d’entrée uplink (ex: `ts/+/uplink` pour matcher `ts/[SN]/uplink`)
+- **`DECODED_PUBLISH_PREFIX`**: préfixe de publication du JSON décodé (ex: `decoded/` → sortie `decoded/ts/[SN]/uplink`)
+- **`CMD_SUBSCRIBE`**: topic(s) d’entrée commandes JSON (ex: `ts/+/downlink` pour matcher `ts/[SN]/downlink`)
+- **`DOWNLINK_PUBLISH_PREFIX`**: préfixe de publication des downlinks encodés (ex: `encoded/` → sortie `encoded/ts/[SN]/downlink`)
 - **`CODEC_INPUT_FORMAT`**: `hex|base64|json_bytes`
 - **`CODEC_OUTPUT_BYTES_FORMAT`**: `hex|base64|json_bytes`
 - **`MILESIGHT_VENDOR_DIR`**: chemin alternatif vers les fichiers Milesight TS601 (optionnel)
@@ -43,13 +43,13 @@ docker logs mqtt-ui --tail 200
 Publier un uplink (hex) :
 
 ```powershell
-docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101"
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts/ABC123/uplink" -m "0101"
 ```
 
 Voir le JSON décodé :
 
 ```powershell
-docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "ts601/decoded/#" -v
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "decoded/ts/+/uplink" -v
 ```
 
 ## Opérations sur la VM (production)
