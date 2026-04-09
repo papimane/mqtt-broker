@@ -6,6 +6,7 @@ Ce document décrit comment configurer et opérer le projet une fois déployé s
 
 - **Mosquitto** : broker MQTT (ports 1883 TCP, 9001 WebSockets)
 - **`ts601-codec`** : service qui décode/encode les messages Milesight TS601 via MQTT
+- **`mqtt-ui`** : UI web MQTTX Web (port 8080)
 
 ## Variables d’environnement (service `ts601-codec`)
 
@@ -34,6 +35,7 @@ docker compose up --build -d
 ```bash
 docker logs mosquitto --tail 200
 docker logs ts601-codec --tail 200
+docker logs mqtt-ui --tail 200
 ```
 
 ### Publier / s’abonner sans installer `mosquitto_pub`
@@ -60,6 +62,7 @@ Répertoire de déploiement : `~/mqtt-broker/deploy/`.
 cd ~/mqtt-broker/deploy
 sudo docker compose -f docker-compose.prod.yml --env-file .env logs -f mosquitto
 sudo docker compose -f docker-compose.prod.yml --env-file .env logs -f ts601-codec
+sudo docker compose -f docker-compose.prod.yml --env-file .env logs -f mqtt-ui
 ```
 
 ### Redémarrer

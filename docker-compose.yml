@@ -31,6 +31,15 @@ services:
     depends_on:
       - mosquitto
 
+  mqtt-ui:
+    image: emqx/mqttx-web:latest
+    container_name: mqtt-ui
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - mosquitto
+
 volumes:
   mosquitto_data:
   mosquitto_log:

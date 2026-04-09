@@ -21,6 +21,9 @@ Broker MQTT :
 - `localhost:1883`
 - WebSockets : `ws://localhost:9001/`
 
+UI d’administration (MQTTX Web) :
+- `http://localhost:8080`
+
 ## Topics (par défaut)
 
 - **Uplink brut → décodé**
