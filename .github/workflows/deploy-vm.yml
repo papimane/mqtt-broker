@@ -41,6 +41,18 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Force GCP project (override appspot)
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          echo "CLOUDSDK_CORE_PROJECT=${PROJECT_ID}" >> "$GITHUB_ENV"
+          echo "CLOUDSDK_PROJECT=${PROJECT_ID}" >> "$GITHUB_ENV"
+          echo "GCLOUD_PROJECT=${PROJECT_ID}" >> "$GITHUB_ENV"
+          echo "GCP_PROJECT=${PROJECT_ID}" >> "$GITHUB_ENV"
+          echo "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}" >> "$GITHUB_ENV"
+          gcloud config set project "${PROJECT_ID}"
+
       - name: Validate required secrets (fail fast)
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
