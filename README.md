@@ -21,9 +21,6 @@ Broker MQTT :
 - `localhost:1883`
 - WebSockets : `ws://localhost:9001/`
 
-UI d’administration (MQTTX Web) :
-- `http://localhost:8080`
-
 ## Topics (par défaut)
 
 - **Uplink brut → décodé**
@@ -60,13 +57,9 @@ Voir `docker-compose.yml` pour les valeurs par défaut.
 
 ## Déploiement sur GCP
 
-Pour un **broker MQTT** (TCP 1883/8883, connexions longues), privilégie :
-- **Compute Engine** (VM) ou
-- **GKE** (Service `LoadBalancer` TCP)
+Déploiement prévu sur une **VM Compute Engine** : build/push de l’image `ts601-codec` vers **Artifact Registry**, puis mise à jour via **SSH** et `docker compose` (voir `.github/workflows/deploy-vm.yml`).
 
-Un exemple de manifests GKE est fourni dans `deploy/gke/`.
-
-Pour une mise en ligne automatisée via GitHub Actions (build/push + déploiement GKE), voir `deploy/gke/GITHUB_TO_GCP.md`.
+Documentation des secrets et du répertoire sur la VM : `deploy/vm/README.md`.
 
 Pour l’exploitation (variables, commandes, logs), voir `docs/REMOTE_OPERATIONS.md`.
 

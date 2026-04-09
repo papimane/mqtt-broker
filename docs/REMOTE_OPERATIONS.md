@@ -1,24 +1,24 @@
 ## Exploitation / Paramétrage distant (GCP)
 
-Ce document décrit comment configurer et opérer le projet une fois déployé sur GCP.
+Ce document décrit comment configurer et opérer le projet une fois déployé sur une **VM GCP** (pipeline GitHub Actions → Artifact Registry → SSH).
 
 ## Composants
 
-- **Mosquitto** : broker MQTT (ports 1883 TCP, 9001 WebSockets en local)
+- **Mosquitto** : broker MQTT (ports 1883 TCP, 9001 WebSockets)
 - **`ts601-codec`** : service qui décode/encode les messages Milesight TS601 via MQTT
 
 ## Variables d’environnement (service `ts601-codec`)
 
-Ces variables sont déjà déclarées dans `docker-compose.yml` et `deploy/gke/ts601-codec.deployment.yaml`.
+Référence locale : `docker-compose.yml`. En production, le workflow génère `~/mqtt-broker/deploy/docker-compose.prod.yml` et `.env` sur la VM.
 
 - **`MQTT_URL`**: URL du broker MQTT (ex: `mqtt://mosquitto:1883`)
-- **`MQTT_USERNAME` / `MQTT_PASSWORD`**: identifiants MQTT (optionnels)
+- **`MQTT_USERNAME` / `MQTT_PASSWORD`**: identifiants MQTT (optionnels ; peuvent être fournis via secrets GitHub `MQTT_USERNAME` / `MQTT_PASSWORD`)
 - **`UPLINK_SUBSCRIBE`**: topic(s) d’entrée uplink (ex: `ts601/uplink/#`)
 - **`DECODED_PUBLISH_PREFIX`**: préfixe de publication du JSON décodé (ex: `ts601/decoded/`)
 - **`CMD_SUBSCRIBE`**: topic(s) d’entrée commandes JSON (ex: `ts601/cmd/#`)
 - **`DOWNLINK_PUBLISH_PREFIX`**: préfixe de publication des downlinks encodés (ex: `ts601/downlink/`)
-- **`CODEC_INPUT_FORMAT`**: `hex|base64|json_bytes` (format des uplinks reçus)
-- **`CODEC_OUTPUT_BYTES_FORMAT`**: `hex|base64|json_bytes` (format des bytes encodés publiés)
+- **`CODEC_INPUT_FORMAT`**: `hex|base64|json_bytes`
+- **`CODEC_OUTPUT_BYTES_FORMAT`**: `hex|base64|json_bytes`
 - **`MILESIGHT_VENDOR_DIR`**: chemin alternatif vers les fichiers Milesight TS601 (optionnel)
 
 ## Commandes utiles (local)
@@ -34,7 +34,6 @@ docker compose up --build -d
 ```bash
 docker logs mosquitto --tail 200
 docker logs ts601-codec --tail 200
-docker logs mqtt-ui --tail 200
 ```
 
 ### Publier / s’abonner sans installer `mosquitto_pub`
@@ -42,66 +41,47 @@ docker logs mqtt-ui --tail 200
 Publier un uplink (hex) :
 
 ```powershell
-docker run --rm --network mqtt-broker_default efrecon/mqtt-client pub -h mosquitto -t "ts601/uplink/test" -m "0101"
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_pub -h mosquitto -t "ts601/uplink/test" -m "0101"
 ```
 
 Voir le JSON décodé :
 
 ```powershell
-docker run --rm --network mqtt-broker_default efrecon/mqtt-client sub -h mosquitto -t "ts601/decoded/#" -v
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 mosquitto_sub -h mosquitto -t "ts601/decoded/#" -v
 ```
 
-## Opérations sur GKE
+## Opérations sur la VM (production)
 
-> Les manifests sont dans `deploy/gke/`.
+Répertoire de déploiement : `~/mqtt-broker/deploy/`.
 
-### Déployer / mettre à jour
+### Logs
 
 ```bash
-kubectl apply -f deploy/gke/namespace.yaml
-kubectl apply -f deploy/gke/mosquitto.configmap.yaml
-kubectl apply -f deploy/gke/mosquitto.deployment.yaml
-kubectl apply -f deploy/gke/mosquitto.service.yaml
-kubectl apply -f deploy/gke/ts601-codec.deployment.yaml
+cd ~/mqtt-broker/deploy
+sudo docker compose -f docker-compose.prod.yml --env-file .env logs -f mosquitto
+sudo docker compose -f docker-compose.prod.yml --env-file .env logs -f ts601-codec
 ```
 
-### Récupérer l’IP du broker MQTT (LoadBalancer)
+### Redémarrer
 
 ```bash
-kubectl -n mqtt get svc mosquitto
+cd ~/mqtt-broker/deploy
+sudo docker compose -f docker-compose.prod.yml --env-file .env restart ts601-codec
+sudo docker compose -f docker-compose.prod.yml --env-file .env restart mosquitto
 ```
 
-### Logs (GKE)
+### Mettre à jour manuellement l’image (sans passer par GitHub)
 
-Mosquitto :
-
-```bash
-kubectl -n mqtt logs deployment/mosquitto --tail=200
-```
-
-Codec :
+Après `docker login` sur Artifact Registry :
 
 ```bash
-kubectl -n mqtt logs deployment/ts601-codec --tail=200
-```
-
-### Redémarrer un composant
-
-```bash
-kubectl -n mqtt rollout restart deployment/mosquitto
-kubectl -n mqtt rollout restart deployment/ts601-codec
-```
-
-### Modifier les variables d’environnement (sans éditer le YAML)
-
-Exemple (changer `CODEC_INPUT_FORMAT`) :
-
-```bash
-kubectl -n mqtt set env deployment/ts601-codec CODEC_INPUT_FORMAT=hex
-kubectl -n mqtt rollout status deployment/ts601-codec
+cd ~/mqtt-broker/deploy
+sudo docker compose -f docker-compose.prod.yml --env-file .env pull ts601-codec
+sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
 ## GitHub → GCP (CI/CD)
 
-La doc de paramétrage GitHub Actions est dans `deploy/gke/GITHUB_TO_GCP.md`.
+Secrets et prérequis : `deploy/vm/README.md`.
 
+Workflow : `.github/workflows/deploy-vm.yml` (tests, build/push `ts601-codec`, déploiement SSH).

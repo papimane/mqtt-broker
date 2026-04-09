@@ -1,0 +1,139 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch: {}
+
+env:
+  SERVICE_NAME: ts601-codec
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unit tests (ts601-codec)
+        run: |
+          cd services/ts601-codec
+          npm ci
+          npm test
+
+      - name: Functional smoke (docker compose)
+        run: |
+          chmod +x tools/functional-smoke.sh
+          ./tools/functional-smoke.sh
+
+      - name: Auth to Google Cloud (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          IMAGE_LATEST: ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest
+        run: |
+          docker build -t "$IMAGE" -t "$IMAGE_LATEST" -f services/ts601-codec/Dockerfile services/ts601-codec
+          docker push "$IMAGE"
+          docker push "$IMAGE_LATEST"
+
+      - name: Create short-lived access token for Artifact Registry
+        id: ar_token
+        run: echo "token=$(gcloud auth print-access-token)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy on VM via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_LATEST: ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest
+          AR_HOST: ${{ secrets.GCP_ARTIFACT_REGION }}-docker.pkg.dev
+          AR_TOKEN: ${{ steps.ar_token.outputs.token }}
+          MQTT_USERNAME: ${{ secrets.MQTT_USERNAME }}
+          MQTT_PASSWORD: ${{ secrets.MQTT_PASSWORD }}
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          passphrase: ${{ secrets.VM_SSH_KEY_PASSPHRASE }}
+          envs: IMAGE_LATEST,AR_HOST,AR_TOKEN,MQTT_USERNAME,MQTT_PASSWORD
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR="${HOME}/mqtt-broker/deploy"
+            mkdir -p "$DEPLOY_DIR"
+
+            cat > "$DEPLOY_DIR/mosquitto.conf" <<'MOSQEOF'
+            per_listener_settings true
+
+            listener 1883 0.0.0.0
+            allow_anonymous true
+
+            listener 9001 0.0.0.0
+            protocol websockets
+            allow_anonymous true
+
+            persistence true
+            persistence_location /mosquitto/data/
+
+            log_dest stdout
+            log_type all
+            MOSQEOF
+
+            cat > "$DEPLOY_DIR/docker-compose.prod.yml" <<'EOF'
+            services:
+              mosquitto:
+                image: eclipse-mosquitto:2.0
+                restart: unless-stopped
+                ports:
+                  - "1883:1883"
+                  - "9001:9001"
+                volumes:
+                  - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+                  - mosquitto_data:/mosquitto/data
+                  - mosquitto_log:/mosquitto/log
+
+              ts601-codec:
+                image: ${IMAGE}
+                restart: unless-stopped
+                environment:
+                  MQTT_URL: mqtt://mosquitto:1883
+                  MQTT_USERNAME: "${MQTT_USERNAME}"
+                  MQTT_PASSWORD: "${MQTT_PASSWORD}"
+                  UPLINK_SUBSCRIBE: ts601/uplink/#
+                  DECODED_PUBLISH_PREFIX: ts601/decoded/
+                  CMD_SUBSCRIBE: ts601/cmd/#
+                  DOWNLINK_PUBLISH_PREFIX: ts601/downlink/
+                  CODEC_INPUT_FORMAT: hex
+                  CODEC_OUTPUT_BYTES_FORMAT: hex
+                depends_on:
+                  - mosquitto
+
+            volumes:
+              mosquitto_data:
+              mosquitto_log:
+            EOF
+
+            cat > "$DEPLOY_DIR/.env" <<EOF
+            IMAGE=${IMAGE_LATEST}
+            MQTT_USERNAME=${MQTT_USERNAME:-}
+            MQTT_PASSWORD=${MQTT_PASSWORD:-}
+            EOF
+
+            cd "$DEPLOY_DIR"
+            echo "${AR_TOKEN}" | sudo docker login -u oauth2accesstoken --password-stdin "https://${AR_HOST}"
+            sudo docker compose -f docker-compose.prod.yml --env-file .env pull ts601-codec
+            sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
