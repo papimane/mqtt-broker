@@ -20,12 +20,39 @@ test("extractUplinkBytes: json envelope avec \\u0002 (échappements JSON)", () =
   assert.deepEqual(bytes, [0x02, 0x41, 0x42]);
 });
 
+test("extractUplinkBytes: json envelope payload_b64 (recommandé)", () => {
+  // bytes: 02 41 42 ff
+  const envelope = '{"topic":"t","payload_b64":"AkFC/w=="}';
+  const { bytes, wrapper } = extractUplinkBytes(Buffer.from(envelope, "utf8"), "hex");
+  assert.equal(wrapper, "json_envelope_b64");
+  assert.deepEqual(bytes, [0x02, 0x41, 0x42, 0xff]);
+});
+
+test("extractUplinkBytes: json envelope payload_hex", () => {
+  const envelope = '{"topic":"t","payload_hex":"02 41 42 FF"}';
+  const { bytes, wrapper } = extractUplinkBytes(Buffer.from(envelope, "utf8"), "hex");
+  assert.equal(wrapper, "json_envelope_hex");
+  assert.deepEqual(bytes, [0x02, 0x41, 0x42, 0xff]);
+});
+
+test("extractUplinkBytes: json envelope payload array", () => {
+  const envelope = '{"topic":"t","payload":[2,65,66,255]}';
+  const { bytes, wrapper } = extractUplinkBytes(Buffer.from(envelope, "utf8"), "hex");
+  assert.equal(wrapper, "json_envelope");
+  assert.deepEqual(bytes, [0x02, 0x41, 0x42, 0xff]);
+});
+
 test("extractUplinkBytes: \\u00ff -> un seul octet 0xFF (latin1), pas UTF-8 2 octets", () => {
   const envelope = '{"topic":"t","payload":"\\u00ff"}';
 
   const { bytes, wrapper } = extractUplinkBytes(Buffer.from(envelope, "utf8"), "hex");
   assert.equal(wrapper, "json_envelope");
   assert.deepEqual(bytes, [0xff]);
+});
+
+test("extractUplinkBytes: payload corrompu avec � -> erreur explicite", () => {
+  const envelope = '{"topic":"t","payload":"�"}';
+  assert.throws(() => extractUplinkBytes(Buffer.from(envelope, "utf8"), "hex"), /payload corrompu/i);
 });
 
 test("extractUplinkBytes: BOM UTF-8 avant {", () => {

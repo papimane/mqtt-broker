@@ -23,6 +23,21 @@ test("parseBytesFromMessage: json_bytes", () => {
   assert.deepEqual(parseBytesFromMessage(buf, "json_bytes"), [9, 8, 7]);
 });
 
+test("parseBytesFromMessage: raw (bytes bruts MQTT)", () => {
+  const buf = Buffer.from([0x02, 0xff, 0x00, 0x41]);
+  assert.deepEqual(parseBytesFromMessage(buf, "raw"), [0x02, 0xff, 0x00, 0x41]);
+});
+
+test("parseBytesFromMessage: auto détecte ascii hex", () => {
+  const buf = Buffer.from("0x01 02 0A", "utf8");
+  assert.deepEqual(parseBytesFromMessage(buf, "auto"), [0x01, 0x02, 0x0a]);
+});
+
+test("parseBytesFromMessage: auto sinon bytes bruts", () => {
+  const buf = Buffer.from([0x01, 0x02, 0xff]);
+  assert.deepEqual(parseBytesFromMessage(buf, "auto"), [0x01, 0x02, 0xff]);
+});
+
 test("formatBytes: hex", () => {
   assert.equal(formatBytes([1, 255], "hex"), "01ff");
 });

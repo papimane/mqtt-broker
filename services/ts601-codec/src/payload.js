@@ -16,6 +16,33 @@ function base64ToBytes(b64) {
   return Array.from(buf.values());
 }
 
+function rawToBytes(messageBuf) {
+  return Array.from(Buffer.from(messageBuf).values());
+}
+
+function isAsciiHexByte(b) {
+  // 0-9 A-F a-f
+  return (
+    (b >= 0x30 && b <= 0x39) ||
+    (b >= 0x41 && b <= 0x46) ||
+    (b >= 0x61 && b <= 0x66)
+  );
+}
+
+function looksLikeAsciiHex(messageBuf) {
+  const buf = Buffer.from(messageBuf);
+  if (buf.length === 0) return false;
+
+  for (const b of buf.values()) {
+    // whitespace
+    if (b === 0x20 || b === 0x09 || b === 0x0a || b === 0x0d) continue;
+    // allow 'x' for 0x prefix
+    if (b === 0x78 || b === 0x58) continue;
+    if (!isAsciiHexByte(b)) return false;
+  }
+  return true;
+}
+
 function bytesToHex(bytes) {
   return bytes.map((b) => (b & 0xff).toString(16).padStart(2, "0")).join("");
 }
@@ -25,7 +52,18 @@ function bytesToBase64(bytes) {
 }
 
 function parseBytesFromMessage(messageBuf, inputFormat) {
-  const raw = messageBuf.toString("utf8");
+  if (inputFormat === "raw") return rawToBytes(messageBuf);
+
+  // Auto: si c'est de l'ASCII hex, on parse en hex; sinon, on traite comme bytes bruts.
+  if (inputFormat === "auto") {
+    if (looksLikeAsciiHex(messageBuf)) {
+      const rawAscii = Buffer.from(messageBuf).toString("ascii");
+      return hexToBytes(rawAscii);
+    }
+    return rawToBytes(messageBuf);
+  }
+
+  const raw = Buffer.from(messageBuf).toString("utf8");
 
   if (inputFormat === "hex") return hexToBytes(raw);
   if (inputFormat === "base64") return base64ToBytes(raw);
