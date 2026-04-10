@@ -2,8 +2,9 @@ const path = require("node:path");
 const mqtt = require("mqtt");
 
 const { loadMilesightCodecFunctions } = require("./ts601-vm");
-const { parseBytesFromMessage, formatBytes, bytesToHex } = require("./payload");
+const { formatBytes, bytesToHex } = require("./payload");
 const { mqttTopicMatchesPrefix } = require("./topic");
+const { extractUplinkBytes, asBuffer } = require("./uplink-envelope");
 
 const MQTT_URL = process.env.MQTT_URL || "mqtt://localhost:1883";
 const MQTT_USERNAME = process.env.MQTT_USERNAME || undefined;
@@ -50,12 +51,22 @@ client.on("connect", () => {
 client.on("message", (topic, message) => {
   try {
     if (mqttTopicMatchesPrefix(topic, UPLINK_SUBSCRIBE)) {
-      const bytes = parseBytesFromMessage(message, CODEC_INPUT_FORMAT);
+      const { bytes, wrapper } = extractUplinkBytes(asBuffer(message), CODEC_INPUT_FORMAT);
+      if (bytes.length === 0) {
+        // eslint-disable-next-line no-console
+        console.error("Uplink: 0 octet après extraction", {
+          topic,
+          wrapper,
+          mqtt_payload_bytes: asBuffer(message).length,
+        });
+      }
       const decoded = decode(bytes);
       const outTopic = DECODED_PUBLISH_PREFIX + topicSuffix(topic);
       const outPayload = JSON.stringify({
         topic,
         input_format: CODEC_INPUT_FORMAT,
+        uplink_wrapper: wrapper,
+        byte_length: bytes.length,
         raw_hex: bytesToHex(bytes),
         decoded,
       });
