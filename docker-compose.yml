@@ -26,7 +26,7 @@ services:
       CMD_SUBSCRIBE: ts/+/downlink
       DOWNLINK_PUBLISH_PREFIX: encoded/
 
-      CODEC_INPUT_FORMAT: hex
+      CODEC_INPUT_FORMAT: base64
       CODEC_OUTPUT_BYTES_FORMAT: hex
     depends_on:
       - mosquitto
