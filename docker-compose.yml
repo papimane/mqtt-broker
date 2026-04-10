@@ -28,7 +28,7 @@ services:
 
       # Format du payload uplink entrant (si ce n'est PAS une enveloppe JSON {topic,payload})
       # Valeurs: hex | base64 | json_bytes
-      CODEC_INPUT_FORMAT: ${CODEC_INPUT_FORMAT:-raw}
+      CODEC_INPUT_FORMAT: ${CODEC_INPUT_FORMAT:-auto}
       # Format des octets sortants pour les downlinks encodés
       # Valeurs: hex | base64 | json_bytes
       CODEC_OUTPUT_BYTES_FORMAT: ${CODEC_OUTPUT_BYTES_FORMAT:-hex}
