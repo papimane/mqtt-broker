@@ -176,7 +176,8 @@ jobs:
                   DECODED_PUBLISH_PREFIX: decoded/
                   CMD_SUBSCRIBE: ts/+/downlink
                   DOWNLINK_PUBLISH_PREFIX: encoded/
-                  CODEC_INPUT_FORMAT: hex
+                  # Le device publie du base64 sur ts/[SN]/uplink
+                  CODEC_INPUT_FORMAT: ${CODEC_INPUT_FORMAT:-base64}
                   CODEC_OUTPUT_BYTES_FORMAT: hex
                 depends_on:
                   - mosquitto
@@ -190,6 +191,7 @@ jobs:
             IMAGE=${IMAGE_LATEST}
             MQTT_USERNAME=${MQTT_USERNAME:-}
             MQTT_PASSWORD=${MQTT_PASSWORD:-}
+            CODEC_INPUT_FORMAT=base64
             EOF
 
             cd "$DEPLOY_DIR"
