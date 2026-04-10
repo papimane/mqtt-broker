@@ -174,8 +174,12 @@ jobs:
                   MQTT_PASSWORD: "${MQTT_PASSWORD}"
                   UPLINK_SUBSCRIBE: ts/+/uplink
                   DECODED_PUBLISH_PREFIX: decoded/
-                  CMD_SUBSCRIBE: ts/+/downlink
-                  DOWNLINK_PUBLISH_PREFIX: encoded/
+                  # Commandes JSON sur un topic séparé (évite collision avec le topic device)
+                  CMD_SUBSCRIBE: cmd/ts/+/downlink
+                  # Publier les bytes encodés directement au device sur ts/[SN]/downlink
+                  DEVICE_DOWNLINK_PUBLISH_PREFIX: ""
+                  # Optionnel: copie debug des downlinks encodés
+                  DOWNLINK_DEBUG_PUBLISH_PREFIX: encoded/
                   # Le device publie du base64 sur ts/[SN]/uplink
                   CODEC_INPUT_FORMAT: ${CODEC_INPUT_FORMAT:-base64}
                   CODEC_OUTPUT_BYTES_FORMAT: hex

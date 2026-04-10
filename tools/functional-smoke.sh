@@ -74,5 +74,30 @@ grep -q '"decoded"' /tmp/decoded.out
 grep -q '"uplink_wrapper":"json_envelope"' /tmp/decoded.out
 grep -q '"battery":1' /tmp/decoded.out
 
+# Downlink smoke: publier une commande JSON sur cmd/..., et vérifier que le broker reçoit un PUBLISH sur ts/.../downlink
+rm -f /tmp/downlink.out
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
+  sh -lc "timeout 20 mosquitto_sub -h mosquitto -t 'ts/ABC123/downlink' -C 1 -v" > /tmp/downlink.out &
+dl_pid=$!
+
+docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
+  mosquitto_pub -h mosquitto -t "cmd/ts/ABC123/downlink" -m '{"hex":"be"}'
+
+set +e
+for i in {1..40}; do
+  if [ -s /tmp/downlink.out ]; then
+    break
+  fi
+  sleep 0.25
+done
+set -e
+wait "$dl_pid" || true
+if [ ! -s /tmp/downlink.out ]; then
+  echo "Smoke KO: aucun message reçu sur ts/ABC123/downlink (downlink bytes)"
+  echo "--- ts601-codec logs ---"
+  docker compose logs --no-color --tail 200 ts601-codec || true
+  exit 1
+fi
+
 echo "OK functional smoke"
 

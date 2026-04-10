@@ -31,8 +31,9 @@ UI d’administration (MQTTX Web) :
   - Sortie (publication codec) : `decoded/<topic_original>` (ex: `decoded/ts/[SN]/uplink`)
 
 - **Commande JSON → downlink encodé**
-  - Entrée (abonnement codec) : `ts/+/downlink` (où `+` = `SN`)
-  - Sortie (publication codec) : `encoded/<topic_original>` (ex: `encoded/ts/[SN]/downlink`)
+  - Entrée (abonnement codec) : `cmd/ts/+/downlink` (où `+` = `SN`)
+  - Sortie (publication codec) : bytes encodés sur `ts/[SN]/downlink` (topic device)
+  - (optionnel) Copie debug : `encoded/ts/[SN]/downlink`
 
 ## Formats de payload supportés
 
@@ -53,8 +54,9 @@ Voir `docker-compose.yml` pour les valeurs par défaut.
 - `MQTT_USERNAME`, `MQTT_PASSWORD` (optionnels)
 - `UPLINK_SUBSCRIBE` (ex: `ts/+/uplink`)
 - `DECODED_PUBLISH_PREFIX` (ex: `decoded/`)
-- `CMD_SUBSCRIBE` (ex: `ts/+/downlink`)
-- `DOWNLINK_PUBLISH_PREFIX` (ex: `encoded/`)
+- `CMD_SUBSCRIBE` (ex: `cmd/ts/+/downlink`)
+- `DEVICE_DOWNLINK_PUBLISH_PREFIX` (ex: vide pour publier sur `ts/[SN]/downlink`)
+- `DOWNLINK_DEBUG_PUBLISH_PREFIX` (ex: `encoded/` ou vide pour désactiver)
 - `CODEC_INPUT_FORMAT` = `hex|base64|json_bytes`
 - `CODEC_OUTPUT_BYTES_FORMAT` = `hex|base64|json_bytes` (format des bytes encodés en sortie)
 

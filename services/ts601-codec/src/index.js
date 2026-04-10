@@ -13,8 +13,12 @@ const MQTT_PASSWORD = process.env.MQTT_PASSWORD || undefined;
 const UPLINK_SUBSCRIBE = process.env.UPLINK_SUBSCRIBE || "ts/+/uplink";
 const DECODED_PUBLISH_PREFIX = process.env.DECODED_PUBLISH_PREFIX || "decoded/";
 
-const CMD_SUBSCRIBE = process.env.CMD_SUBSCRIBE || "ts/+/downlink";
-const DOWNLINK_PUBLISH_PREFIX = process.env.DOWNLINK_PUBLISH_PREFIX || "encoded/";
+// IMPORTANT:
+// - `ts/[SN]/downlink` est le topic écouté par le device (par défaut Milesight).
+// - On sépare donc le "topic commande JSON" du "topic device bytes".
+const CMD_SUBSCRIBE = process.env.CMD_SUBSCRIBE || "cmd/ts/+/downlink";
+const DEVICE_DOWNLINK_PUBLISH_PREFIX = process.env.DEVICE_DOWNLINK_PUBLISH_PREFIX || "";
+const DOWNLINK_DEBUG_PUBLISH_PREFIX = process.env.DOWNLINK_DEBUG_PUBLISH_PREFIX || "encoded/";
 
 const CODEC_INPUT_FORMAT = (process.env.CODEC_INPUT_FORMAT || "hex").toLowerCase();
 const CODEC_OUTPUT_BYTES_FORMAT = (process.env.CODEC_OUTPUT_BYTES_FORMAT || "hex").toLowerCase();
@@ -28,6 +32,11 @@ const { decode, encode } = loadMilesightCodecFunctions({ decoderPath, encoderPat
 function topicSuffix(originalTopic) {
   // On évite les doubles "//" si l’utilisateur inclut un suffixe.
   return originalTopic.replace(/^\//, "");
+}
+
+function stripLiteralPrefix(topic, literalPrefix) {
+  if (!literalPrefix) return topic;
+  return topic.startsWith(literalPrefix) ? topic.slice(literalPrefix.length) : topic;
 }
 
 const client = mqtt.connect(MQTT_URL, {
@@ -99,9 +108,17 @@ client.on("message", (topic, message) => {
         bytes = encode(cmd);
       }
 
-      const outTopic = DOWNLINK_PUBLISH_PREFIX + topicSuffix(topic);
-      const outPayload = formatBytes(bytes, CODEC_OUTPUT_BYTES_FORMAT);
-      client.publish(outTopic, outPayload, { qos: 0, retain: false });
+      // Publie les bytes encodés sur le topic device "ts/[SN]/downlink"
+      // en transformant le topic commande "cmd/ts/[SN]/downlink" -> "ts/[SN]/downlink".
+      const deviceTopic = DEVICE_DOWNLINK_PUBLISH_PREFIX + topicSuffix(stripLiteralPrefix(topic, "cmd/"));
+      const devicePayload = formatBytes(bytes, CODEC_OUTPUT_BYTES_FORMAT);
+      client.publish(deviceTopic, devicePayload, { qos: 0, retain: false });
+
+      // Optionnel: topic debug "encoded/..."
+      if (DOWNLINK_DEBUG_PUBLISH_PREFIX) {
+        const debugTopic = DOWNLINK_DEBUG_PUBLISH_PREFIX + topicSuffix(stripLiteralPrefix(topic, "cmd/"));
+        client.publish(debugTopic, devicePayload, { qos: 0, retain: false });
+      }
       return;
     }
   } catch (e) {
