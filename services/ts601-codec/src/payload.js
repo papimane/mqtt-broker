@@ -16,6 +16,33 @@ function base64ToBytes(b64) {
   return Array.from(buf.values());
 }
 
+function isAsciiBase64Byte(b) {
+  // A-Z a-z 0-9 + / =
+  return (
+    (b >= 0x41 && b <= 0x5a) ||
+    (b >= 0x61 && b <= 0x7a) ||
+    (b >= 0x30 && b <= 0x39) ||
+    b === 0x2b ||
+    b === 0x2f ||
+    b === 0x3d
+  );
+}
+
+function looksLikeAsciiBase64(messageBuf) {
+  const buf = Buffer.from(messageBuf);
+  if (buf.length === 0) return false;
+
+  let meaningful = 0;
+  for (const b of buf.values()) {
+    // whitespace
+    if (b === 0x20 || b === 0x09 || b === 0x0a || b === 0x0d) continue;
+    meaningful += 1;
+    if (!isAsciiBase64Byte(b)) return false;
+  }
+  // On évite de classer une payload vide / juste whitespace comme base64
+  return meaningful > 0;
+}
+
 function rawToBytes(messageBuf) {
   return Array.from(Buffer.from(messageBuf).values());
 }
@@ -60,15 +87,27 @@ function parseBytesFromMessage(messageBuf, inputFormat) {
       const rawAscii = Buffer.from(messageBuf).toString("ascii");
       return hexToBytes(rawAscii);
     }
+    if (looksLikeAsciiBase64(messageBuf)) {
+      const rawAscii = Buffer.from(messageBuf).toString("ascii");
+      return base64ToBytes(rawAscii);
+    }
     return rawToBytes(messageBuf);
   }
 
-  const raw = Buffer.from(messageBuf).toString("utf8");
+  // IMPORTANT:
+  // - hex/base64 sont des encodages ASCII -> on lit en ascii (pas utf8) pour ne pas introduire de '�'
+  // - si on demande base64 mais que la payload n'est pas ASCII base64, on fallback en raw (device qui publie du binaire brut)
+  const buf = Buffer.from(messageBuf);
 
-  if (inputFormat === "hex") return hexToBytes(raw);
-  if (inputFormat === "base64") return base64ToBytes(raw);
+  if (inputFormat === "hex") return hexToBytes(buf.toString("ascii"));
+  if (inputFormat === "base64") {
+    if (!looksLikeAsciiBase64(buf)) return rawToBytes(buf);
+    const rawAscii = buf.toString("ascii");
+    return base64ToBytes(rawAscii);
+  }
   if (inputFormat === "json_bytes") {
-    const parsed = JSON.parse(raw);
+    const rawUtf8 = buf.toString("utf8");
+    const parsed = JSON.parse(rawUtf8);
     if (!parsed || !Array.isArray(parsed.bytes)) throw new Error("JSON attendu: {\"bytes\":[...]}");
     return parsed.bytes.map((x) => Number(x));
   }

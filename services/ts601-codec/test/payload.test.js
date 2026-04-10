@@ -18,6 +18,11 @@ test("parseBytesFromMessage: base64", () => {
   assert.deepEqual(parseBytesFromMessage(buf, "base64"), [1, 2, 3]);
 });
 
+test("parseBytesFromMessage: base64 mais payload binaire brut -> fallback raw", () => {
+  const buf = Buffer.from([0xf3, 0xae, 0xbc, 0xe3, 0xad, 0x3a]);
+  assert.deepEqual(parseBytesFromMessage(buf, "base64"), [0xf3, 0xae, 0xbc, 0xe3, 0xad, 0x3a]);
+});
+
 test("parseBytesFromMessage: json_bytes", () => {
   const buf = Buffer.from(JSON.stringify({ bytes: [9, 8, 7] }), "utf8");
   assert.deepEqual(parseBytesFromMessage(buf, "json_bytes"), [9, 8, 7]);
