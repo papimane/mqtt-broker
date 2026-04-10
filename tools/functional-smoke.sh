@@ -80,6 +80,20 @@ docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
   sh -lc "timeout 20 mosquitto_sub -h mosquitto -t 'ts/ABC123/downlink' -C 1 -v" > /tmp/downlink.out &
 dl_pid=$!
 
+# Wait until downlink subscriber is registered on broker (avoid race)
+set +e
+dl_ready=0
+for i in {1..40}; do
+  docker compose logs --no-color --tail 300 mosquitto | grep -q "ts/ABC123/downlink" && dl_ready=1 && break
+  sleep 0.25
+done
+set -e
+if [ "$dl_ready" -ne 1 ]; then
+  echo "Smoke KO: downlink subscriber pas prêt (pas de SUBSCRIBE ts/ABC123/downlink vu côté broker)"
+  docker compose logs --no-color --tail 300 mosquitto || true
+  exit 1
+fi
+
 docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
   mosquitto_pub -h mosquitto -t "cmd/ts/ABC123/downlink" -m '{"hex":"be"}'
 
