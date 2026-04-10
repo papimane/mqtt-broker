@@ -75,8 +75,30 @@ client.on("message", (topic, message) => {
     }
 
     if (mqttTopicMatchesPrefix(topic, CMD_SUBSCRIBE)) {
-      const cmd = JSON.parse(message.toString("utf8"));
-      const bytes = encode(cmd);
+      const cmd = JSON.parse(asBuffer(message).toString("utf8"));
+
+      // Support "raw downlink" formats for operational simplicity:
+      // - { "hex": "be" } or { "hex": "60 01 a0 05" }
+      // - { "base64": "..." }
+      // - { "bytes": [1,2,3] }
+      // Otherwise, treat as Milesight encoder command object.
+      let bytes;
+      if (cmd && typeof cmd === "object" && typeof cmd.hex === "string") {
+        // Reuse uplink parser to normalize hex -> bytes
+        // (parseBytesFromMessage supports hex ASCII).
+        // eslint-disable-next-line global-require
+        const { parseBytesFromMessage } = require("./payload");
+        bytes = parseBytesFromMessage(Buffer.from(cmd.hex, "ascii"), "hex");
+      } else if (cmd && typeof cmd === "object" && typeof cmd.base64 === "string") {
+        // eslint-disable-next-line global-require
+        const { parseBytesFromMessage } = require("./payload");
+        bytes = parseBytesFromMessage(Buffer.from(cmd.base64, "ascii"), "base64");
+      } else if (cmd && typeof cmd === "object" && Array.isArray(cmd.bytes)) {
+        bytes = cmd.bytes.map((x) => Number(x));
+      } else {
+        bytes = encode(cmd);
+      }
+
       const outTopic = DOWNLINK_PUBLISH_PREFIX + topicSuffix(topic);
       const outPayload = formatBytes(bytes, CODEC_OUTPUT_BYTES_FORMAT);
       client.publish(outTopic, outPayload, { qos: 0, retain: false });
