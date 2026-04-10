@@ -26,8 +26,12 @@ services:
       CMD_SUBSCRIBE: ts/+/downlink
       DOWNLINK_PUBLISH_PREFIX: encoded/
 
-      CODEC_INPUT_FORMAT: base64
-      CODEC_OUTPUT_BYTES_FORMAT: hex
+      # Format du payload uplink entrant (si ce n'est PAS une enveloppe JSON {topic,payload})
+      # Valeurs: hex | base64 | json_bytes
+      CODEC_INPUT_FORMAT: ${CODEC_INPUT_FORMAT:-hex}
+      # Format des octets sortants pour les downlinks encodés
+      # Valeurs: hex | base64 | json_bytes
+      CODEC_OUTPUT_BYTES_FORMAT: ${CODEC_OUTPUT_BYTES_FORMAT:-hex}
     depends_on:
       - mosquitto
 

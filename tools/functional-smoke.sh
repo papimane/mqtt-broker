@@ -45,9 +45,10 @@ if [ "$sub_ready" -ne 1 ]; then
   exit 1
 fi
 
-# Publish a minimal uplink: "0101" -> battery:1 via codec
+# Publish a minimal uplink en binaire (enveloppe JSON).
+# Payload = deux octets 0x01 0x01 -> battery: 1 via codec.
 docker run --rm --network mqtt-broker_default eclipse-mosquitto:2.0 \
-  mosquitto_pub -h mosquitto -t "ts/ABC123/uplink" -m "0101"
+  mosquitto_pub -h mosquitto -t "ts/ABC123/uplink" -m '{"topic":"ts/ABC123/uplink","payload":"\u0001\u0001"}'
 
 set +e
 for i in {1..20}; do
@@ -70,6 +71,7 @@ if [ ! -s /tmp/decoded.out ]; then
 fi
 
 grep -q '"decoded"' /tmp/decoded.out
+grep -q '"uplink_wrapper":"json_envelope"' /tmp/decoded.out
 grep -q '"battery":1' /tmp/decoded.out
 
 echo "OK functional smoke"
